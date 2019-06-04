@@ -15,7 +15,16 @@ module shitarabaToDatTools =
 
         member this.WriteToFile(enc: string) =
             if resultList.Length > 0 then
-                use sw = new StreamWriter("test.dat", true, System.Text.Encoding.GetEncoding(enc))
+                let mutable name = ""
+                let mutable slashCount = 0
+                for i in url do
+                    if i = '/' then
+                        slashCount <- slashCount + 1
+
+                    if slashCount > 6 then
+                        name <- name + (string i)
+
+                use sw = new StreamWriter(name.Substring(1, name.Length - 2) + ".dat", false, System.Text.Encoding.GetEncoding(enc))
 
                 for i: string in resultList do
                     sw.WriteLine(i)
@@ -99,7 +108,7 @@ module shitarabaToDatTools =
                                         let tmp = this.returnLine tmpList.[j]
                                         tmpStr <- tmpStr + tmp
         
-                                tmpStr <- tmpStr.Substring(0, (tmpStr.Length - 4))
+                                tmpStr <- tmpStr.Substring(0, (tmpStr.Length - 5))
                                 textList <- textList @ [tmpStr;]
         
         
