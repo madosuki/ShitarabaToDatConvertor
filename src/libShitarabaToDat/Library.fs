@@ -108,7 +108,7 @@ module shitarabaToDatTools =
                             | "" when i = 0 -> resultList <- resultList @ [nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent;]
                             | "" -> resultList <- resultList @ [nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>"]
                             | _ when i = 0 -> resultList <- resultList @ [nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent;]
-                            | _ -> resultList <- resultList @ [nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>";]
+                            | _ -> resultList <- resultList @ [nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>";]
         
                     return resultList
                 }
