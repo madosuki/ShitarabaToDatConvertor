@@ -3,14 +3,22 @@
 module shitarabaToDatTools =
 
     open System
+    open System.IO
     open AngleSharp
     open FSharp.Control.Tasks.V2
 
-    type htmlToDatClass(target: string) =
+    type shitarabaToDatClass(target: string) =
         let url = target
         let config = Configuration.Default.WithDefaultLoader()
         let context = BrowsingContext.New(config)
         let mutable resultList = []
+
+        member this.WriteToFile(enc: string) =
+            if resultList.Length > 0 then
+                use sw = new StreamWriter("test.dat", true, System.Text.Encoding.GetEncoding(enc))
+
+                for i: string in resultList do
+                    sw.WriteLine(i)
 
         member private this.returnLine (s: string) =
             let mutable tmp = ""
