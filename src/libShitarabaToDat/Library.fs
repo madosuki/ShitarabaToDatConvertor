@@ -87,7 +87,7 @@ module shitarabaToDatTools =
                                     mailList <- mailList @ [href;]
                                 else
                                     mailList <- mailList @ ["";]
-        
+
                         let mutable count = 1
                         if ddCollection.Length > 0 then
                             for i in ddCollection do
@@ -100,8 +100,7 @@ module shitarabaToDatTools =
                                 let mutable tmpStr = ""
                                 for j in 2 .. (tmpList.Length - 2) do
                                     if isFirstLine then
-                                        let tmp = tmpList.[j].Substring 13
-                                        let result: string = this.returnLine(tmp)
+                                        let result: string = this.returnLine <| tmpList.[j].Substring 13
                                         tmpStr <- tmpStr + result
                                         isFirstLine <- false
                                     else
