@@ -8,13 +8,13 @@ type options = {
     [<Option("encoding", HelpText = "DAT File Encoding (e.g. sjis). Default value is utf-8. Used by System.Text.Encoding.GetEncoding()")>] encoding : string
 }
 
-let nullCheck x =
+let inline nullCheck x =
     if x <> null then
         Some(x)
     else
         None
 
-let run (url: string) (encode: string option) =
+let inline run (url: string) (encode: string option) =
     let c = shitarabaToDatClass(url)
     let r = c.htmlToDat.GetAwaiter().GetResult()
 
