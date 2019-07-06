@@ -349,3 +349,5 @@ healthchecksdb
 MigrationBackup/
 
 *.dat
+*.txt
+*.html
