@@ -6,6 +6,7 @@ module shitarabaToDatTools =
     open System.IO
     open System.Collections.Generic
     open AngleSharp
+    open AngleSharp.Html.Parser
     open FSharp.Control.Tasks.V2
 
     type shitarabaToDatClass(target: string) =
@@ -48,7 +49,7 @@ module shitarabaToDatTools =
                 for i : string in resultList do
                     sw.WriteLine(i)
 
-        member private this.returnLine (s: string) =
+        member private this.returnLine(s: string) =
             let mutable tmp = ""
             let mutable isChange = true
         
@@ -60,6 +61,20 @@ module shitarabaToDatTools =
                     isChange <- false
         
             tmp
+
+        member private this.detectRes(s: string) =
+            let mutable target = s
+            let parser = new HtmlParser()
+            let parsed = parser.ParseDocument(s)
+            let spanList = parsed.QuerySelectorAll("span.res")
+            for i in spanList do
+                let a = i.QuerySelectorAll("a")
+                if a.Length > 0 then
+                    for j in a do
+                        printfn "%A" j.TextContent
+                        i.Remove()
+            let text = parsed.Body.InnerHtml
+            printfn "%A" text
     
         // Task
         member this.htmlToDat =
@@ -135,10 +150,12 @@ module shitarabaToDatTools =
                                     let mutable tmpStr = ""
                                     for j in 2 .. (tmpList.Length - 2) do
                                         if isFirstLine then
+                                            // this.detectRes(tmpList.[j].Substring 13)
                                             let result: string = this.returnLine <| tmpList.[j].Substring 13
                                             tmpStr <- tmpStr + result
                                             isFirstLine <- false
                                         else
+                                            // this.detectRes(tmpList.[j])
                                             let tmp = this.returnLine tmpList.[j]
                                             tmpStr <- tmpStr + tmp
             
