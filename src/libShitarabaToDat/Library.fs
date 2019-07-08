@@ -59,22 +59,73 @@ module shitarabaToDatTools =
         
                 if i = '>' then
                     isChange <- false
-        
             tmp
 
-        member private this.detectRes(s: string) =
-            let mutable target = s
+        member private this.detectRes(s: string, insertList: List<string>) =
+            let mutable isTag = false
+            let mutable isSpan = false
+            let mutable tmp = ""
+            let mutable tag = ""
+            let mutable countTag = 0
+            let mutable insertCount = 0
+            let mutable wordCount = 0
+
+            for i in s do
+                wordCount <- wordCount + 1
+
+                if i = '<' && isTag = false then
+                    isTag <- true
+
+                if isTag = false then
+                    tmp <- tmp + (string i)
+
+                if isSpan && i = '<' then
+                    countTag <- countTag + 1
+
+                if isTag then
+                    tag <- tag + (string i)
+                    if tag.Length = 18 then
+                        if tag = "<span class=\"res\">" then
+                            isSpan <- true
+                            countTag <- 1
+                        else
+                            tmp <- tmp + tag
+                            tag <- ""
+                            isTag <- false
+                    else if wordCount = s.Length && isSpan = false then
+                        tmp <- tmp + tag
+
+                if countTag = 4 then
+                    tmp <- tmp + insertList.[insertCount]
+                    insertCount <- insertCount + 1
+                    isSpan <- false
+                    isTag <- false
+                    countTag <- 0
+                    tag <- ""
+
+            // printfn "%A" tmp
+            tmp
+
+        member private this.replaceRes(s: string) =
             let parser = new HtmlParser()
             let parsed = parser.ParseDocument(s)
             let spanList = parsed.QuerySelectorAll("span.res")
-            for i in spanList do
-                let a = i.QuerySelectorAll("a")
-                if a.Length > 0 then
-                    for j in a do
-                        printfn "%A" j.TextContent
-                        i.Remove()
-            let text = parsed.Body.InnerHtml
-            printfn "%A" text
+
+            let mutable text = parsed.Body.InnerHtml
+
+            let resNoList = new List<string>()
+            if spanList.Length > 0 then
+                for i in spanList do
+                    let a = i.QuerySelectorAll("a")
+                    if a.Length > 0 then
+                        for j in a do
+                            let tmp = j.TextContent.Replace(">>", "&gt;&gt;")
+                            resNoList.Add(tmp)
+
+            // printfn "%A" text
+            // text
+            let result = this.detectRes(text, resNoList)
+            result.Replace("/span>", "")
     
         // Task
         member this.htmlToDat =
@@ -150,16 +201,23 @@ module shitarabaToDatTools =
                                     let mutable tmpStr = ""
                                     for j in 2 .. (tmpList.Length - 2) do
                                         if isFirstLine then
-                                            // this.detectRes(tmpList.[j].Substring 13)
-                                            let result: string = this.returnLine <| tmpList.[j].Substring 13
+                                            let mutable tmp = ""
+                                            if tmpList.[j].Length > 13 then
+                                                tmp <- tmpList.[j].Substring 13
+                                            else
+                                                tmp <- tmpList.[j]
+                                            let processed = this.replaceRes(tmp)
+                                            // let result: string = this.returnLine <| tmpList.[j].Substring 13
+                                            let result = this.returnLine(processed)
                                             tmpStr <- tmpStr + result
                                             isFirstLine <- false
                                         else
-                                            // this.detectRes(tmpList.[j])
-                                            let tmp = this.returnLine tmpList.[j]
-                                            tmpStr <- tmpStr + tmp
+                                            let tmp = this.replaceRes(tmpList.[j])
+                                            let result = this.returnLine(tmp)
+                                            tmpStr <- tmpStr + result
             
-                                    tmpStr <- tmpStr.Substring(0, (tmpStr.Length - 5))
+                                    if tmpStr.Length > 5 then
+                                        tmpStr <- tmpStr.Substring(0, (tmpStr.Length - 5))
                                     // textList <- textList @ [tmpStr;]
                                     textList.Add(tmpStr)
             
