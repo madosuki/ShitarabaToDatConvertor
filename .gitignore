@@ -351,3 +351,5 @@ MigrationBackup/
 *.dat
 *.txt
 *.html
+
+.ionide
