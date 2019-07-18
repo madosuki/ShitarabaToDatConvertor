@@ -13,28 +13,11 @@ module shitarabaToDatTools =
         let url = target
         let config = Configuration.Default.WithDefaultLoader()
         let context = BrowsingContext.New(config)
-        // let mutable resultList = []
-        let resultList = new List<string>()
+        // let mutable datLineList = []
+        let datLineList = new List<string>()
 
         member this.WriteToFile(enc: string) =
-            (*
-            if resultList.Length > 0 then
-                let mutable name = ""
-                let mutable slashCount = 0
-                for i in url do
-                    if i = '/' then
-                        slashCount <- slashCount + 1
-
-                    if slashCount > 6 then
-                        name <- name + (string i)
-
-                use sw = new StreamWriter(name.Substring(1, name.Length - 2) + ".dat", false, System.Text.Encoding.GetEncoding(enc))
-
-                for i: string in resultList do
-                    sw.WriteLine(i)
-            *)
-
-            if resultList.Count > 0 then
+            if datLineList.Count > 0 then
                 let mutable name = ""
                 let mutable slashCount = 0
                 for i in url do
@@ -46,75 +29,67 @@ module shitarabaToDatTools =
                                                                                                                          
                 use sw = new StreamWriter(name.Substring(1, name.Length - 2) + ".dat", false, System.Text.Encoding.GetEncoding(enc))
                                                                                                                          
-                for i : string in resultList do
+                for i : string in datLineList do
                     sw.WriteLine(i)
 
-        member private this.returnLine(s: string) =
+        member private this.removeEndOfBRTag(s: string) =
+            let mutable current = s.Length - 1
             let mutable tmp = ""
-            let mutable isChange = true
+            let mutable isChange = false
+            let mutable isContinue = true
+            printfn "%A" s
+
+            while isContinue do
+                tmp <- tmp + (string s.[current])
+
+                if tmp.IndexOf(">rb<") > 0 && isChange = false then
+                    isChange <- true
+                    tmp <- ""
+
+                current <- current - 1
+                if current = -1 then
+                    isContinue <- false
         
-            for i in s do
-                if isChange then
-                    tmp <- tmp + (string i)
-        
-                if i = '>' then
-                    isChange <- false
-            tmp
+            let tmpArray = tmp.ToCharArray()
+            Array.Reverse(tmpArray)
+            new System.String(tmpArray)
 
-        member private this.detectRes(s: string, insertList: List<string>) =
-            let mutable isTag = false
-            let mutable isSpan = false
-            let mutable tmp = ""
-            let mutable tag = ""
-            let mutable countTag = 0
-            let mutable insertCount = 0
-            let mutable wordCount = 0
 
-            for i in s do
-                wordCount <- wordCount + 1
+        member private this.replaceAloneATag(s: string) =
 
-                if i = '<' && isTag = false then
-                    isTag <- true
+            let parse = new HtmlParser()
+            let parsed = parse.ParseDocument(s)
+            let aList = parsed.QuerySelectorAll("a")
 
-                if isTag = false then
-                    tmp <- tmp + (string i)
+            let urlList = new List<string>()
+            for i in urlList do
+                urlList.Add(i)
 
-                if isSpan && i = '<' then
-                    countTag <- countTag + 1
+            let mutable result = s
+            if urlList.Count > 0 then
+                let mutable tmp = s
+                let mutable isContinue = true
+                let mutable count = 0
+                while isContinue = true do
+                    let startPoint = s.IndexOf("<a>")
+                    let endPoint = s.IndexOf("</a>") + 3
 
-                if isTag then
-                    tag <- tag + (string i)
-                    if tag.Length = 18 then
-                        if tag = "<span class=\"res\">" then
-                            isSpan <- true
-                            countTag <- 1
-                        else
-                            tmp <- tmp + tag
-                            tag <- ""
-                            isTag <- false
-                    else if wordCount = s.Length && isSpan = false then
-                        tmp <- tmp + tag
+                    if startPoint = -1 then
+                        isContinue <- false
+                    else
+                        tmp <- tmp.Substring(0, startPoint) + tmp.Substring(endPoint, tmp.Length - endPoint) + urlList.[count]
+                        count <- count + 1
+                result <- tmp
 
-                if countTag = 4 then
-                    tmp <- tmp + insertList.[insertCount]
-                    insertCount <- insertCount + 1
-                    isSpan <- false
-                    isTag <- false
-                    countTag <- 0
-                    tag <- ""
-
-            // printfn "%A" tmp
-            tmp
+            result
 
         member private this.replaceRes(s: string) =
             let parser = new HtmlParser()
             let parsed = parser.ParseDocument(s)
             let spanList = parsed.QuerySelectorAll("span.res")
 
-            let mutable text = parsed.Body.InnerHtml
-
-            let resNoList = new List<string>()
             if spanList.Length > 0 then
+                let resNoList = new List<string>()
                 for i in spanList do
                     let a = i.QuerySelectorAll("a")
                     if a.Length > 0 then
@@ -122,10 +97,98 @@ module shitarabaToDatTools =
                             let tmp = j.TextContent.Replace(">>", "&gt;&gt;")
                             resNoList.Add(tmp)
 
-            // printfn "%A" text
-            // text
-            let result = this.detectRes(text, resNoList)
-            result.Replace("/span>", "")
+                let mutable tmp = s
+                let mutable count = 0
+                let mutable isContinue = true
+                while isContinue do
+                    let startPoint = tmp.IndexOf("<span class=\"res\">")
+                    let endPoint = tmp.IndexOf("</span>") + 7
+
+                    if startPoint = -1 then
+                        isContinue <- false
+                    else
+                        // printfn "Count: %A, String Size: %A, Start: %A, End: %A" count tmp.Length startPoint (endPoint - 7)
+                        let left = tmp.Substring(0, startPoint)
+                        let right = tmp.Substring(endPoint, tmp.Length - endPoint)
+                        tmp <- left + resNoList.[count] + right
+                        count <- count + 1
+
+
+                tmp
+            else
+                s
+
+        member this.createDtList(dt : Dom.IHtmlCollection<Dom.IElement>) =
+            let nameList = new List<string>()
+            let tripList = new List<string>()
+            let mailList = new List<string>()
+            let dateList = new List<string>()
+            let idList = new List<string>()
+
+            let dtList = new List<string>()
+            if dt.Length > 0 then
+                for i in dt do
+                    let name = i.QuerySelectorAll("b")
+                    if name.Length > 0 then
+                        for j in name do
+                            nameList.Add(j.TextContent)
+        
+                            let mutable trip = ""
+                            if j.NextSibling.TextContent.Length > 30 then
+                                let tmp = j.NextSibling.TextContent.Split '\n'
+                                trip <- tmp.[0]
+        
+                            tripList.Add(trip)
+        
+                            let tmpDate = i.ChildNodes.[0].NextSibling.NextSibling.TextContent
+                            let splited = tmpDate.Substring(15).Split '\n'
+                            let dateAndID = splited.[0].Split ' '
+                            dateList.Add(dateAndID.[0] + " " + dateAndID.[1])
+                            idList.Add(dateAndID.[2])
+        
+                            let aList = i.QuerySelectorAll("a")
+                            if aList.Length > 0 then
+                                let attr = aList.Item(0).Attributes
+                                let href = attr.Item(0).Value.Substring 7
+                                mailList.Add(href)
+                            else
+                                mailList.Add("")
+
+                for i in 0 .. (idList.Count - 1) do
+                    match tripList.[i] with
+                    | "" -> dtList.Add(nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>")
+                    | _ -> dtList.Add(nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i]+ "<>")
+            dtList
+
+        member this.createDdList(dd : Dom.IHtmlCollection<Dom.IElement>) =
+            let ddList = new List<string>()
+            let mutable count = 1
+
+            if dd.Length > 0 then
+                for i in dd do
+                    let mutable isFirstLine = true
+
+                    let tmpList = (i.InnerHtml.Split '\n').[2..]
+
+                    count <- count + 1
+
+                    let mutable tmpStr = ""
+                    for j in 0 .. (tmpList.Length - 1) do
+                        if isFirstLine then
+                            let mutable tmp = ""
+                            if tmpList.[j].Length > 13 then
+                                tmp <- tmpList.[j].Substring 13
+                            else
+                                tmp <- tmpList.[j]
+                                                                                                
+                            tmpStr <- tmpStr + this.replaceRes(tmp)
+                            isFirstLine <- false
+                         else
+                            let tmp = this.replaceRes(tmpList.[j])
+                            tmpStr <- tmpStr + tmp
+
+                    ddList.Add(tmpStr.Substring(0, tmpStr.Length - 25))
+            ddList
     
         // Task
         member this.htmlToDat =
@@ -134,110 +197,21 @@ module shitarabaToDatTools =
         
                     do! 
                         task{
-                            let title = body.QuerySelectorAll("h1")
+                            let title = body.QuerySelectorAll("h1").Item(0).TextContent
             
                             let dtCollection = body.QuerySelectorAll("dt")
                             let ddCollection = body.QuerySelectorAll("dd")
                             
-                            (*
-                            let mutable nameList = []
-                            let mutable tripList = []
-                            let mutable mailList = []
-                            let mutable dateList = []
-                            let mutable idList = []
-                            let mutable textList = []
-                            *)
-    
-                            let nameList = new List<string>()
-                            let tripList = new List<string>()
-                            let mailList = new List<string>()
-                            let dateList = new List<string>()
-                            let idList = new List<string>()
-                            let textList = new List<string>()
+                            let dtList = this.createDtList(dtCollection)
+                            let ddList = this.createDdList(ddCollection)
             
-                            if dtCollection.Length > 0 then
-                                for i in dtCollection do
-                                    let name = i.QuerySelectorAll("b")
-                                    if name.Length > 0 then
-                                        for j in name do
-                                            // nameList <- nameList @ [j.TextContent;]
-                                            nameList.Add(j.TextContent)
-            
-                                            let mutable trip = ""
-                                            if j.NextSibling.TextContent.Length > 30 then
-                                                let tmp = j.NextSibling.TextContent.Split '\n'
-                                                trip <- tmp.[0]
-            
-                                            // tripList <- tripList @ [trip;]
-                                            tripList.Add(trip)
-            
-                                    let tmpDate = i.ChildNodes.[0].NextSibling.NextSibling.TextContent
-                                    let splited = tmpDate.Substring(15).Split '\n'
-                                    let dateAndID = splited.[0].Split ' '
-                                    // dateList <- dateList @ [dateAndID.[0] + " " + dateAndID.[1];]
-                                    dateList.Add(dateAndID.[0] + " " + dateAndID.[1])
-                                    // idList <- idList @ [dateAndID.[2];]
-                                    idList.Add(dateAndID.[2])
-            
-                                    let aList = i.QuerySelectorAll("a")
-                                    if aList.Length > 0 then
-                                        let attr = aList.Item(0).Attributes
-                                        let href = attr.Item(0).Value.Substring 7
-                                        // mailList <- mailList @ [href;]
-                                        mailList.Add(href)
-                                    else
-                                        // mailList <- mailList @ ["";]
-                                        mailList.Add("")
-    
-                            let mutable count = 1
-                            if ddCollection.Length > 0 then
-                                for i in ddCollection do
-                                    let mutable isFirstLine = true
-            
-                                    let tmpList = i.InnerHtml.Split '\n'
-            
-                                    count <- count + 1
-            
-                                    let mutable tmpStr = ""
-                                    for j in 2 .. (tmpList.Length - 2) do
-                                        if isFirstLine then
-                                            let mutable tmp = ""
-                                            if tmpList.[j].Length > 13 then
-                                                tmp <- tmpList.[j].Substring 13
-                                            else
-                                                tmp <- tmpList.[j]
-                                            let processed = this.replaceRes(tmp)
-                                            // let result: string = this.returnLine <| tmpList.[j].Substring 13
-                                            let result = this.returnLine(processed)
-                                            tmpStr <- tmpStr + result
-                                            isFirstLine <- false
-                                        else
-                                            let tmp = this.replaceRes(tmpList.[j])
-                                            let result = this.returnLine(tmp)
-                                            tmpStr <- tmpStr + result
-            
-                                    if tmpStr.Length > 5 then
-                                        tmpStr <- tmpStr.Substring(0, (tmpStr.Length - 5))
-                                    // textList <- textList @ [tmpStr;]
-                                    textList.Add(tmpStr)
-            
-                            (*
-                            for i in 0 .. (idList.Length - 1) do
-                                match tripList.[i] with
-                                | "" when i = 0 -> resultList <- resultList @ [nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent;]
-                                | "" -> resultList <- resultList @ [nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>"]
-                                | _ when i = 0 -> resultList <- resultList @ [nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent;]
-                                | _ -> resultList <- resultList @ [nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>";]
-                            *)
-    
-                            for i in 0 .. (idList.Count - 1) do
-                                match tripList.[i] with
-                                | "" when i = 0 -> resultList.Add(nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent)
-                                | "" -> resultList.Add(nameList.[i] + "<>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>")
-                                | _ when i = 0 -> resultList.Add(nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>" + title.Item(0).TextContent)
-                                | _ -> resultList.Add(nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i] + "<>" + textList.[i] + "<>")
+                            for i in 0 .. (dtList.Count - 1) do
+                                if i = 0 then
+                                    datLineList.Add(dtList.[i] + ddList.[i] + "<>" + title)
+                                else
+                                    datLineList.Add(dtList.[i] + ddList.[i] + "<>")
                         }
         
-                    return resultList
+                    return datLineList
                 }
     
