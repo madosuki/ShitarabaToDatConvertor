@@ -32,57 +32,36 @@ module shitarabaToDatTools =
                 for i : string in datLineList do
                     sw.WriteLine(i)
 
-        member private this.removeEndOfBRTag(s: string) =
-            let mutable current = s.Length - 1
-            let mutable tmp = ""
-            let mutable isChange = false
-            let mutable isContinue = true
-            printfn "%A" s
-
-            while isContinue do
-                tmp <- tmp + (string s.[current])
-
-                if tmp.IndexOf(">rb<") > 0 && isChange = false then
-                    isChange <- true
-                    tmp <- ""
-
-                current <- current - 1
-                if current = -1 then
-                    isContinue <- false
-        
-            let tmpArray = tmp.ToCharArray()
-            Array.Reverse(tmpArray)
-            new System.String(tmpArray)
-
-
         member private this.replaceAloneATag(s: string) =
-
             let parse = new HtmlParser()
             let parsed = parse.ParseDocument(s)
             let aList = parsed.QuerySelectorAll("a")
 
-            let urlList = new List<string>()
-            for i in urlList do
-                urlList.Add(i)
+            if aList.Length > 0 then
+                let urlList = new List<string>()
+                for i in urlList do
+                    urlList.Add(i)
 
-            let mutable result = s
-            if urlList.Count > 0 then
-                let mutable tmp = s
-                let mutable isContinue = true
-                let mutable count = 0
-                while isContinue = true do
-                    let startPoint = s.IndexOf("<a>")
-                    let endPoint = s.IndexOf("</a>") + 3
-
-                    if startPoint = -1 then
-                        isContinue <- false
-                    else
-                        tmp <- tmp.Substring(0, startPoint) + tmp.Substring(endPoint, tmp.Length - endPoint) + urlList.[count]
-                        count <- count + 1
-                result <- tmp
-
-            result
-
+                let mutable result = s
+                if urlList.Count > 0 then
+                    let mutable tmp = s
+                    let mutable isContinue = true
+                    let mutable count = 0
+                    while isContinue = true do
+                        let startPoint = s.IndexOf("<a>")
+                        let endPoint = s.IndexOf("</a>") + 4
+    
+                        if startPoint = -1 then
+                            isContinue <- false
+                        else
+                            tmp <- tmp.Substring(0, startPoint) + urlList.[count] + tmp.Substring(endPoint, tmp.Length - endPoint)
+                            count <- count + 1
+                    result <- tmp
+    
+                result
+            else
+                s
+    
         member private this.replaceRes(s: string) =
             let parser = new HtmlParser()
             let parsed = parser.ParseDocument(s)
@@ -112,13 +91,11 @@ module shitarabaToDatTools =
                         let right = tmp.Substring(endPoint, tmp.Length - endPoint)
                         tmp <- left + resNoList.[count] + right
                         count <- count + 1
-
-
                 tmp
             else
                 s
 
-        member this.createDtList(dt : Dom.IHtmlCollection<Dom.IElement>) =
+        member private this.createDtList (dt : inref<Dom.IHtmlCollection<Dom.IElement>>) =
             let nameList = new List<string>()
             let tripList = new List<string>()
             let mailList = new List<string>()
@@ -160,7 +137,7 @@ module shitarabaToDatTools =
                     | _ -> dtList.Add(nameList.[i] + "</b>" + tripList.[i] + "<b><>" + mailList.[i] + "<>" + dateList.[i] + " ID:" + idList.[i]+ "<>")
             dtList
 
-        member this.createDdList(dd : Dom.IHtmlCollection<Dom.IElement>) =
+        member this.createDdList(dd : inref<Dom.IHtmlCollection<Dom.IElement>>) =
             let ddList = new List<string>()
             let mutable count = 1
 
@@ -180,11 +157,12 @@ module shitarabaToDatTools =
                                 tmp <- tmpList.[j].Substring 13
                             else
                                 tmp <- tmpList.[j]
-                                                                                                
-                            tmpStr <- tmpStr + this.replaceRes(tmp)
+                            
+                            let result = this.replaceAloneATag <| this.replaceRes(tmp)
+                            tmpStr <- tmpStr + result
                             isFirstLine <- false
                          else
-                            let tmp = this.replaceRes(tmpList.[j])
+                            let tmp = this.replaceAloneATag <| this.replaceRes(tmpList.[j])
                             tmpStr <- tmpStr + tmp
 
                     ddList.Add(tmpStr.Substring(0, tmpStr.Length - 25))
@@ -202,8 +180,8 @@ module shitarabaToDatTools =
                             let dtCollection = body.QuerySelectorAll("dt")
                             let ddCollection = body.QuerySelectorAll("dd")
                             
-                            let dtList = this.createDtList(dtCollection)
-                            let ddList = this.createDdList(ddCollection)
+                            let dtList = this.createDtList(&dtCollection)
+                            let ddList = this.createDdList(&ddCollection)
             
                             for i in 0 .. (dtList.Count - 1) do
                                 if i = 0 then
