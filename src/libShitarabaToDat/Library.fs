@@ -13,11 +13,10 @@ module shitarabaToDatTools =
         let url = target
         let config = Configuration.Default.WithDefaultLoader()
         let context = BrowsingContext.New(config)
-        // let mutable datLineList = []
-        let datLineList = new List<string>()
+        let dat = new List<string>()
 
         member this.WriteToFile(enc: string) =
-            if datLineList.Count > 0 then
+            if dat.Count > 0 then
                 let mutable name = ""
                 let mutable slashCount = 0
                 for i in url do
@@ -28,8 +27,8 @@ module shitarabaToDatTools =
                         name <- name + (string i)
                                                                                                                          
                 use sw = new StreamWriter(name.Substring(1, name.Length - 2) + ".dat", false, System.Text.Encoding.GetEncoding(enc))
-                                                                                                                         
-                for i : string in datLineList do
+
+                for i in dat do
                     sw.WriteLine(i)
 
         member private this.replaceAloneATag(s: byref<string>) =
@@ -174,11 +173,12 @@ module shitarabaToDatTools =
                             let dtList = this.createDtList(&dtCollection)
                             let ddList = this.createDdList(&ddCollection)
             
+                            dat.Clear()
                             for i in 0 .. (dtList.Count - 1) do
                                 if i = 0 then
-                                    datLineList.Add(dtList.[i] + ddList.[i] + "<>" + title)
+                                    dat.Add(dtList.[i] + ddList.[i] + "<>" + title)
                                 else
-                                    datLineList.Add(dtList.[i] + ddList.[i] + "<>")
+                                    dat.Add(dtList.[i] + ddList.[i] + "<>")
                         }
         
                     return true
