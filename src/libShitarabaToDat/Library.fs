@@ -32,7 +32,7 @@ module shitarabaToDatTools =
                 for i : string in datLineList do
                     sw.WriteLine(i)
 
-        member private this.replaceAloneATag(s: string) =
+        member private this.replaceAloneATag(s: byref<string>) =
             let parse = new HtmlParser()
             let parsed = parse.ParseDocument(s)
             let aList = parsed.QuerySelectorAll("a")
@@ -42,9 +42,7 @@ module shitarabaToDatTools =
                 for i in urlList do
                     urlList.Add(i)
 
-                let mutable result = s
                 if urlList.Count > 0 then
-                    let mutable tmp = s
                     let mutable isContinue = true
                     let mutable count = 0
                     while isContinue = true do
@@ -54,15 +52,10 @@ module shitarabaToDatTools =
                         if startPoint = -1 then
                             isContinue <- false
                         else
-                            tmp <- tmp.Substring(0, startPoint) + urlList.[count] + tmp.Substring(endPoint, tmp.Length - endPoint)
+                            s <- s.Substring(0, startPoint) + urlList.[count] + s.Substring(endPoint, s.Length - endPoint)
                             count <- count + 1
-                    result <- tmp
     
-                result
-            else
-                s
-    
-        member private this.replaceRes(s: string) =
+        member private this.replaceRes(s: byref<string>) =
             let parser = new HtmlParser()
             let parsed = parser.ParseDocument(s)
             let spanList = parsed.QuerySelectorAll("span.res")
@@ -76,24 +69,20 @@ module shitarabaToDatTools =
                             let tmp = j.TextContent.Replace(">>", "&gt;&gt;")
                             resNoList.Add(tmp)
 
-                let mutable tmp = s
                 let mutable count = 0
                 let mutable isContinue = true
                 while isContinue do
-                    let startPoint = tmp.IndexOf("<span class=\"res\">")
-                    let endPoint = tmp.IndexOf("</span>") + 7
+                    let startPoint = s.IndexOf("<span class=\"res\">")
+                    let endPoint = s.IndexOf("</span>") + 7
 
                     if startPoint = -1 then
                         isContinue <- false
                     else
                         // printfn "Count: %A, String Size: %A, Start: %A, End: %A" count tmp.Length startPoint (endPoint - 7)
-                        let left = tmp.Substring(0, startPoint)
-                        let right = tmp.Substring(endPoint, tmp.Length - endPoint)
-                        tmp <- left + resNoList.[count] + right
+                        let left = s.Substring(0, startPoint)
+                        let right = s.Substring(endPoint, s.Length - endPoint)
+                        s <- left + resNoList.[count] + right
                         count <- count + 1
-                tmp
-            else
-                s
 
         member private this.createDtList (dt : inref<Dom.IHtmlCollection<Dom.IElement>>) =
             let nameList = new List<string>()
@@ -158,12 +147,14 @@ module shitarabaToDatTools =
                             else
                                 tmp <- tmpList.[j]
                             
-                            let result = this.replaceAloneATag <| this.replaceRes(tmp)
-                            tmpStr <- tmpStr + result
+                            this.replaceRes(&tmp)
+                            this.replaceAloneATag(&tmp)
+                            tmpStr <- tmpStr + tmp
                             isFirstLine <- false
                          else
-                            let tmp = this.replaceAloneATag <| this.replaceRes(tmpList.[j])
-                            tmpStr <- tmpStr + tmp
+                            this.replaceRes(&tmpList.[j])
+                            this.replaceAloneATag(&tmpList.[j])
+                            tmpStr <- tmpStr + tmpList.[j]
 
                     ddList.Add(tmpStr.Substring(0, tmpStr.Length - 25))
             ddList
@@ -190,6 +181,6 @@ module shitarabaToDatTools =
                                     datLineList.Add(dtList.[i] + ddList.[i] + "<>")
                         }
         
-                    return datLineList
+                    return true
                 }
     
